@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Rialo Catch Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{
+  margin:0;
+  overflow:hidden;
+  font-family:Inter,Arial,sans-serif;
+  background:linear-gradient(#f6eddc,#f2e4cc);
+}
+#topbar{
+  height:64px;
+  background:#0d0d0d;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 22px;
+  font-size:18px;
+}
+canvas{display:block;}
+
+#overlay{
+  position:fixed;
+  inset:0;
+  background:linear-gradient(rgba(0,0,0,.9),rgba(0,0,0,.85));
+  color:#fff;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  text-align:center;
+  z-index:10;
+}
+#overlay img{
+  width:120px;
+  margin-bottom:20px;
+}
+#overlay h1{
+  font-size:38px;
+  letter-spacing:1px;
+  margin:10px 0;
+}
+#overlay p{
+  font-size:18px;
+  opacity:.85;
+  margin:6px 0;
+}
+#overlay button{
+  margin-top:22px;
+  padding:14px 34px;
+  font-size:18px;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div>TIME: <span id="time">40</span></div>
+  <div>RIALO GAME</div>
+  <div>POINT: <span id="score">0</span></div>
+</div>
+
+<canvas id="game"></canvas>
+
+<!-- BRANDING OVERLAY -->
+<div id="overlay">
+  <img src="rialo.png">
+  <h1>Rethink. Rebuild. Rialo</h1>
+  <p>Start your journey with Rialo</p>
+  <p style="margin-top:12px;font-size:22px;">
+    Final Score: <b><span id="final"></span></b>
+  </p>
+  <button onclick="restart()">Restart Game</button>
+</div>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+function resize(){
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=innerWidth*dpr;
+  canvas.height=(innerHeight-64)*dpr;
+  canvas.style.width=innerWidth+"px";
+  canvas.style.height=(innerHeight-64)+"px";
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+resize(); addEventListener("resize",resize);
+
+const goodImg=new Image(); goodImg.src="good.png";
+const badImg=new Image(); badImg.src="bad.png";
+const basketImg=new Image(); basketImg.src="basket.png";
+
+let score=0,time=40,over=false;
+let smoothX=innerWidth/2;
+
+const basket={x:innerWidth/2,y:innerHeight-210,w:320,h:170};
+let balls=[];
+
+function spawnBall(){
+  const sizes=[90,120,150];
+  const pts=[3,5,7];
+  const i=Math.floor(Math.random()*3);
+  const good=Math.random()>0.4;
+  balls.push({
+    x:Math.random()*(innerWidth-200)+100,
+    y:-200,
+    s:sizes[i],
+    p:pts[i],
+    good:good,
+    img:good?goodImg:badImg,
+    v:4+(40-time)*0.3
+  });
+}
+
+let spawnT=0,last=0;
+function loop(t){
+  const dt=t-last; last=t;
+  if(!over){
+    spawnT+=dt;
+    if(spawnT>520){spawnBall(); spawnT=0;}
+  }
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  basket.x+=(smoothX-basket.x)*0.18;
+
+  ctx.drawImage(basketImg,basket.x-basket.w/2,basket.y,basket.w,basket.h);
+
+  balls.forEach((b,i)=>{
+    b.y+=b.v;
+    ctx.drawImage(b.img,b.x-b.s/2,b.y-b.s/2,b.s,b.s);
+    if(b.y+b.s/2>basket.y &&
+       b.x>basket.x-basket.w/2 &&
+       b.x<basket.x+basket.w/2){
+      score+=b.good?b.p:-b.p;
+      balls.splice(i,1);
+    }
+  });
+
+  balls=balls.filter(b=>b.y<innerHeight+300);
+  document.getElementById("score").innerText=score;
+  requestAnimationFrame(loop);
+}
+loop(0);
+
+addEventListener("mousemove",e=>smoothX=e.clientX);
+addEventListener("touchmove",e=>smoothX=e.touches[0].clientX);
+
+setInterval(()=>{
+  if(over) return;
+  time--;
+  document.getElementById("time").innerText=time;
+  if(time<=0){
+    over=true;
+    document.getElementById("overlay").style.display="flex";
+    document.getElementById("final").innerText=score;
+  }
+},1000);
+
+function restart(){
+  score=0; time=40; balls=[]; over=false;
+  document.getElementById("overlay").style.display="none";
+}
+</script>
+</body>
+</html>
